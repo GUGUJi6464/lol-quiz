@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCP 鐵粉段位賽：召喚師終極知識挑戰 | LCP Ranked Fan Quiz: The Ultimate Lore Challenge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Inter:wght@400;500;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-primary:     #ffffff;
+      --bg-secondary:   #f5f5f4;
+      --bg-tertiary:    #fafaf9;
+      --text-primary:   #1c1917;
+      --text-secondary: #78716c;
+      --text-tertiary:  #a8a29e;
+      --border-light:   rgba(0,0,0,0.10);
+      --border-mid:     rgba(0,0,0,0.20);
+      --radius-md: 8px; --radius-lg: 12px;
+      --green-bg:#ECFDF5; --green-text:#065F46; --green-border:#059669;
+      --red-bg:#FEF2F2;   --red-text:#991B1B;   --red-border:#DC2626;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-primary:#1c1917; --bg-secondary:#292524; --bg-tertiary:#231f1e;
+        --text-primary:#fafaf9; --text-secondary:#a8a29e; --text-tertiary:#78716c;
+        --border-light:rgba(255,255,255,0.10); --border-mid:rgba(255,255,255,0.20);
+        --green-bg:#052e16; --green-text:#86efac; --green-border:#059669;
+        --red-bg:#450a0a;   --red-text:#fca5a5;   --red-border:#DC2626;
+      }
+    }
+
+    body {
+      font-family: 'Noto Sans TC', 'Inter', sans-serif;
+      background: var(--bg-tertiary); color: var(--text-primary);
+      min-height: 100vh; padding: 2rem 1rem 5rem;
+    }
+    body.lang-en { font-family: 'Inter', sans-serif; }
+
+    #app { max-width: 660px; margin: 0 auto; }
+    .screen { display: none; }
+    .screen.active { display: block; animation: fadein 0.2s ease; }
+    @keyframes fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+
+    /* ── Language toggle ── */
+    .lang-bar {
+      display: flex; justify-content: flex-end; margin-bottom: 1.25rem;
+    }
+    .lang-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 50px;
+      border: 0.5px solid var(--border-mid);
+      background: var(--bg-primary); color: var(--text-secondary);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      font-family: inherit;
+    }
+    .lang-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+    .lang-flag { font-size: 16px; }
+
+    /* ── Shared ── */
+    .card { background:var(--bg-primary); border:0.5px solid var(--border-light); border-radius:var(--radius-lg); padding:1.5rem; margin-bottom:1rem; }
+    .btn-primary { width:100%; padding:13px; background:var(--text-primary); color:var(--bg-primary); border:none; border-radius:var(--radius-lg); font-size:15px; font-weight:500; font-family:inherit; cursor:pointer; transition:opacity 0.15s; }
+    .btn-primary:hover { opacity:0.82; }
+    .btn-primary:disabled { opacity:0.28; cursor:not-allowed; }
+    .ghost-btn { width:100%; margin-top:0.75rem; padding:11px; border:0.5px solid var(--border-light); border-radius:var(--radius-md); background:transparent; color:var(--text-secondary); font-size:13px; font-family:inherit; cursor:pointer; transition:background 0.15s; }
+    .ghost-btn:hover { background:var(--bg-secondary); }
+
+    /* ── Screen 1: Name ── */
+    .name-wrap { max-width:380px; margin:0 auto; padding-top:0.5rem; text-align:center; }
+    .lol-logo { font-family:'Playfair Display',serif; font-size:34px; margin-bottom:0.3rem; line-height:1.25; }
+    .lol-sub  { font-size:13px; color:var(--text-secondary); margin-bottom:1.5rem; }
+    .firebase-badge { display:inline-flex; align-items:center; gap:6px; font-size:11px; padding:4px 14px; border-radius:50px; background:var(--bg-secondary); color:var(--text-secondary); border:0.5px solid var(--border-light); margin-bottom:1.75rem; }
+    .firebase-badge .dot { width:6px; height:6px; border-radius:50%; background:#059669; }
+    .name-label { font-size:13px; color:var(--text-secondary); display:block; margin-bottom:6px; text-align:left; }
+    .name-input { width:100%; font-size:15px; padding:11px 14px; border:0.5px solid var(--border-light); border-radius:var(--radius-md); background:var(--bg-primary); color:var(--text-primary); font-family:inherit; outline:none; transition:border-color 0.15s; margin-bottom:1rem; display:block; }
+    .name-input:focus { border-color:var(--border-mid); }
+
+    /* ── Screen 2: Quiz ── */
+    .quiz-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; }
+    .quiz-title-sm { font-size:14px; font-weight:500; max-width:60%; }
+    .timer-badge { font-size:14px; font-weight:500; background:var(--bg-secondary); padding:5px 16px; border-radius:50px; border:0.5px solid var(--border-light); min-width:64px; text-align:center; transition:background 0.3s,color 0.3s; font-variant-numeric:tabular-nums; }
+    .timer-badge.warn   { background:#FEF9C3; color:#854D0E; border-color:#FDE047; }
+    .timer-badge.danger { background:var(--red-bg); color:var(--red-text); border-color:var(--red-border); }
+    .progress-wrap { margin-bottom:1.25rem; }
+    .progress-bar  { height:5px; background:var(--border-light); border-radius:3px; overflow:hidden; }
+    .progress-fill { height:100%; background:var(--text-primary); border-radius:3px; transition:width 0.4s ease; }
+    .prog-label    { font-size:12px; color:var(--text-secondary); margin-top:5px; }
+    .question-text { font-size:17px; font-weight:500; line-height:1.65; margin-bottom:1.25rem; }
+    .options-grid  { display:flex; flex-direction:column; gap:9px; }
+    .opt-btn { padding:12px 16px; border:0.5px solid var(--border-light); border-radius:10px; background:var(--bg-secondary); color:var(--text-primary); font-size:14px; font-family:inherit; cursor:pointer; text-align:left; transition:border-color 0.15s,background 0.15s; display:flex; align-items:center; gap:12px; }
+    .opt-btn:hover:not(:disabled) { border-color:var(--border-mid); background:var(--bg-primary); }
+    .opt-btn.correct { border-color:var(--green-border)!important; background:var(--green-bg)!important; color:var(--green-text)!important; }
+    .opt-btn.wrong   { border-color:var(--red-border)!important;   background:var(--red-bg)!important;   color:var(--red-text)!important; }
+    .opt-btn:disabled { cursor:default; }
+    .opt-circle { width:26px; height:26px; border-radius:50%; border:1.5px solid currentColor; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:500; flex-shrink:0; opacity:0.6; }
+    .feedback-bar { padding:11px 16px; border-radius:10px; font-size:14px; font-weight:500; margin:1rem 0; display:none; }
+    .feedback-bar.show { display:block; }
+    .feedback-bar.ok { background:var(--green-bg); color:var(--green-text); }
+    .feedback-bar.no { background:var(--red-bg);   color:var(--red-text); }
+    .next-btn { width:100%; padding:12px; border:0.5px solid var(--border-mid); border-radius:10px; background:transparent; color:var(--text-primary); font-size:14px; font-family:inherit; cursor:pointer; display:none; transition:background 0.15s; }
+    .next-btn.show  { display:block; }
+    .next-btn:hover { background:var(--bg-secondary); }
+
+    /* ── Screen 3: Result ── */
+    .result-wrap { text-align:center; padding:0.5rem 0; }
+    .rank-badge { margin:0 auto 1.25rem; width:118px; height:118px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; border:3px solid currentColor; }
+    .rank-icon { font-size:42px; line-height:1; }
+    .rank-lbl  { font-size:12px; font-weight:500; margin-top:4px; letter-spacing:0.06em; }
+    .score-big { font-family:'Playfair Display',serif; font-size:68px; font-weight:700; line-height:1; margin-bottom:0.2rem; }
+    .score-sub     { font-size:13px; color:var(--text-secondary); margin-bottom:0.4rem; }
+    .correct-count { font-size:15px; margin-bottom:0.25rem; }
+    .correct-count span { font-weight:700; }
+    .time-taken    { font-size:13px; color:var(--text-secondary); margin-bottom:1.5rem; }
+    .db-status { display:inline-flex; align-items:center; gap:7px; font-size:12px; padding:5px 14px; border-radius:50px; background:var(--bg-secondary); color:var(--text-secondary); border:0.5px solid var(--border-light); margin-bottom:1.25rem; }
+    .db-status .dot { width:7px; height:7px; border-radius:50%; background:#a8a29e; transition:background 0.4s; }
+    .db-status.saving .dot { background:#F59E0B; }
+    .db-status.saved  .dot { background:#059669; }
+    .db-status.err    .dot { background:#DC2626; }
+    .rank-scale { display:flex; gap:4px; justify-content:center; margin:0 auto 1.5rem; max-width:480px; }
+    .rank-pip { height:6px; border-radius:3px; flex:1; opacity:0.2; transition:opacity 0.4s,transform 0.4s; }
+    .rank-pip.active { opacity:1; transform:scaleY(1.8); }
+    .share-section { margin-top:1.5rem; }
+    .share-section h3 { font-size:13px; color:var(--text-secondary); margin-bottom:0.9rem; }
+    .share-btns { display:flex; gap:9px; justify-content:center; flex-wrap:wrap; }
+    .share-btn { padding:10px 20px; border-radius:50px; border:none; font-size:13px; font-weight:500; font-family:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:opacity 0.15s; }
+    .share-btn:hover { opacity:0.82; }
+    .share-ig   { background:linear-gradient(135deg,#f09433,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888); color:#fff; }
+    .share-th   { background:#000; color:#fff; }
+    .share-copy { background:var(--bg-secondary); color:var(--text-primary); border:0.5px solid var(--border-mid)!important; }
+    .retry-btn { margin-top:1rem; padding:10px 24px; border-radius:50px; border:0.5px solid var(--border-mid); background:transparent; color:var(--text-primary); font-size:14px; font-family:inherit; cursor:pointer; transition:background 0.15s; }
+    .retry-btn:hover { background:var(--bg-secondary); }
+    .detail-toggle { margin-top:1.5rem; font-size:13px; color:var(--text-secondary); cursor:pointer; text-decoration:underline; text-underline-offset:3px; display:inline-block; }
+    .detail-list { margin-top:1rem; text-align:left; display:none; }
+    .detail-list.show { display:block; }
+    .detail-item { padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:6px; display:flex; align-items:flex-start; gap:10px; }
+    .detail-item.ok { background:var(--green-bg); color:var(--green-text); }
+    .detail-item.no { background:var(--red-bg);   color:var(--red-text); }
+    .d-icon { flex-shrink:0; font-weight:700; }
+    .d-q { flex:1; }
+    .d-ans { font-size:12px; margin-top:3px; opacity:0.72; }
+
+    /* ── Screen 4: Leaderboard ── */
+    .lb-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; }
+    .lb-header h2 { font-size:18px; font-weight:500; }
+    .back-btn { padding:7px 18px; border:0.5px solid var(--border-mid); border-radius:50px; background:transparent; color:var(--text-secondary); font-size:13px; font-family:inherit; cursor:pointer; transition:background 0.15s; }
+    .back-btn:hover { background:var(--bg-secondary); }
+    #lb-content.lb-loading { text-align:center; padding:2rem; color:var(--text-secondary); font-size:14px; }
+    .lb-empty { text-align:center; padding:2rem; color:var(--text-secondary); font-size:14px; line-height:1.7; }
+    .lb-table { width:100%; border-collapse:collapse; font-size:14px; }
+    .lb-table th { font-size:12px; font-weight:500; color:var(--text-secondary); padding:8px 10px; text-align:left; border-bottom:0.5px solid var(--border-light); }
+    .lb-table td { padding:10px 10px; border-bottom:0.5px solid var(--border-light); vertical-align:middle; }
+    .lb-table tr:last-child td { border-bottom:none; }
+    .lb-table tr:hover td { background:var(--bg-secondary); }
+    .lb-rank-num { font-size:13px; color:var(--text-tertiary); font-weight:500; }
+    .lb-name-main { font-weight:500; font-size:14px; }
+    .lb-name-date { font-size:11px; color:var(--text-tertiary); margin-top:1px; }
+    .lb-score-val { font-size:16px; font-weight:700; }
+    .lb-meta { font-size:12px; color:var(--text-secondary); }
+    code { font-size:12px; background:var(--bg-secondary); padding:2px 6px; border-radius:4px; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div id="screen-name" class="screen active">
+    <div class="lang-bar">
+      <button class="lang-btn" id="btn-lang">
+        <span class="lang-flag" id="lang-flag">🇺🇸</span>
+        <span id="lang-label">English</span>
+      </button>
+    </div>
+    <div class="name-wrap">
+      <div class="lol-logo" id="ui-logo">英雄聯盟測驗<br><span style="font-size:18px;color:var(--text-secondary)">（待定）</span></div>
+      <div class="lol-sub" id="ui-sub">十道題目，考驗你的英雄聯盟知識！</div>
+      <div class="firebase-badge"><span class="dot"></span> <span id="ui-db-badge">Firebase 資料庫已連線</span></div>
+      <label class="name-label" id="ui-name-label" for="player-name">你的暱稱（將顯示在排行榜）</label>
+      <input class="name-input" id="player-name" type="text" maxlength="20" />
+      <button class="btn-primary" id="btn-enter" disabled></button>
+      <button class="ghost-btn" id="btn-view-lb"></button>
+    </div>
+  </div>
+
+  <div id="screen-quiz" class="screen">
+    <div class="quiz-top">
+      <span class="quiz-title-sm" id="quiz-title-display"></span>
+      <span class="timer-badge" id="timer-badge">0:00</span>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="prog-label" id="prog-label"></div>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="question-text" id="question-text"></div>
+      <div class="options-grid" id="options-grid"></div>
+    </div>
+    <div class="feedback-bar" id="feedback-bar"></div>
+    <button class="next-btn" id="next-btn"></button>
+  </div>
+
+  <div id="screen-result" class="screen">
+    <div class="result-wrap">
+      <div class="rank-badge" id="rank-badge">
+        <div class="rank-icon" id="rank-icon"></div>
+        <div class="rank-lbl"  id="rank-name"></div>
+      </div>
+      <div class="score-big" id="score-big"></div>
+      <div class="score-sub" id="ui-score-sub"></div>
+      <div class="correct-count" id="correct-count"></div>
+      <div class="time-taken"    id="time-taken"></div>
+      <div class="db-status" id="db-status">
+        <span class="dot"></span>
+        <span id="db-status-text"></span>
+      </div>
+      <div class="rank-scale" id="rank-scale"></div>
+      <div class="share-section">
+        <h3 id="ui-share-title"></h3>
+        <div class="share-btns">
+          <button class="share-btn share-ig"   id="btn-ig">📸 Instagram</button>
+          <button class="share-btn share-th"   id="btn-th">🧵 Threads</button>
+          <button class="share-btn share-copy" id="btn-copy"></button>
+        </div>
+      </div>
+      <div style="margin-top:1rem;display:flex;gap:9px;justify-content:center;flex-wrap:wrap;">
+        <button class="retry-btn" id="btn-result-lb"></button>
+        <button class="retry-btn" id="btn-retry"></button>
+      </div>
+      <div class="detail-toggle" id="detail-toggle"></div>
+      <div class="detail-list"   id="detail-list"></div>
+    </div>
+  </div>
+
+  <div id="screen-leaderboard" class="screen">
+    <div class="lb-header">
+      <h2 id="ui-lb-title">🏆 排行榜</h2>
+      <button class="back-btn" id="btn-back"></button>
+    </div>
+    <div class="card" style="padding:1rem;">
+      <div id="lb-content" class="lb-loading"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ════════════════════════════════════════════════
+   Firebase
+════════════════════════════════════════════════ */
+firebase.initializeApp({
+  apiKey:            "AIzaSyAwnLugE8J0evmllr4D_aLz3Q1-Od2hsdc",
+  authDomain:        "lol-quiz-8d3bd.firebaseapp.com",
+  projectId:         "lol-quiz-8d3bd",
+  storageBucket:     "lol-quiz-8d3bd.firebasestorage.app",
+  messagingSenderId: "416645713439",
+  appId:             "1:416645713439:web:2692fa95e5eda8f8860f2a",
+  measurementId:     "G-4W47WEVQN7"
+});
+const db = firebase.firestore();
+const COLLECTION = 'quiz_results';
+
+/* ════════════════════════════════════════════════
+   雙語字串 / Bilingual strings
+════════════════════════════════════════════════ */
+const STRINGS = {
+  zh: {
+    logo:           'LCP Ranked Fan Quiz: The Ultimate Lore Challenge<br><span style="font-size:18px;color:var(--text-secondary)">LCP 鐵粉段位賽：召喚師終極知識挑戰</span>',
+    sub:            '五道題目，考驗你的 LCP 知識！',
+    dbBadge:        'Firebase 資料庫已連線',
+    nameLabel:      '你的暱稱（將顯示在排行榜）',
+    namePlaceholder:'輸入你的名稱...',
+    btnEnter:       '開始挑戰 →',
+    btnLb:          '🏆 查看排行榜',
+    langFlag:       '🇺🇸', langLabel: 'English',
+    progLabel:      (cur, tot) => `第 ${cur} 題 / 共 ${tot} 題`,
+    feedbackOk:     '✓ 答對了！',
+    feedbackNo:     (l, t) => `✗ 答錯了，正確答案是 ${l}：${t}`,
+    nextBtn:        '下一題 →',
+    finishBtn:      '查看結果 →',
+    scoreSub:       '總分',
+    correctCount:   (c, t) => `答對 <span>${c}</span> 題 / 共 ${t} 題`,
+    timeTaken:      (t) => `⏱ 作答時間：${t}`,
+    dbSaving:       '正在儲存成績...',
+    dbSaved:        '✓ 成績已儲存至 Firebase',
+    dbErr:          '⚠ 儲存失敗（請檢查 Firebase 規則或網路）',
+    shareTitle:     '分享你的成績',
+    btnCopy:        '🔗 複製連結',
+    btnCopied:      '✓ 已複製！',
+    btnResultLb:    '🏆 查看排行榜',
+    btnRetry:       '↺ 重新挑戰',
+    detailShow:     '查看詳細解答',
+    detailHide:     '收起解答',
+    detailAns:      (s, st, c, ct) => `你的答案：${s} ${st}　正確：${c} ${ct}`,
+    lbTitle:        '🏆 排行榜',
+    btnBack:        '← 返回',
+    lbLoading:      '載入中...',
+    lbEmpty:        '還沒有人完成測驗，成為第一名吧！🎉',
+    lbAnon:         '匿名',
+    lbPts:          ' 分',
+    lbQCount:       (c, t) => `${c}/${t} 題`,
+    lbCols:         ['名次','玩家','段位','分數','時間','答對'],
+    lbErr:          '⚠ 載入失敗。<br><br>請至 Firebase Console → Firestore → 索引，新增複合索引：<br><code>quizTitle ASC + score DESC + timeTakenSec ASC</code>',
+    shareText:      (title, icon, name, score, time, url) =>
+                    `我在《${title}》獲得了 ${icon} ${name}！\n得了 ${score} 分，作答時間 ${time}，你也來挑戰！\n${url}`,
+    igAlert:        '✅ 成績文字已複製到剪貼簿！\n請在 Instagram 開新貼文後貼上 📸',
+    igFallback:     '請手動複製以下文字分享到 Instagram：\n\n',
+    copyFallback:   '請手動複製以下文字：',
+    rankNames:      ['鐵牌', '銅牌', '銀牌', '白金', '鑽石', '菁英'],
+    dateLocale:     'zh-TW',
+  },
+  en: {
+    logo:           'LCP Ranked Fan Quiz: The Ultimate Lore Challenge<br><span style="font-size:18px;color:var(--text-secondary)">League Championship Pacific</span>',
+    sub:            'Five questions to test your LCP knowledge!',
+    dbBadge:        'Firebase database connected',
+    nameLabel:      'Your nickname (shown on leaderboard)',
+    namePlaceholder:'Enter your name...',
+    btnEnter:       'Start Challenge →',
+    btnLb:          '🏆 Leaderboard',
+    langFlag:       '🇹🇼', langLabel: '中文',
+    progLabel:      (cur, tot) => `Q${cur} / ${tot}`,
+    feedbackOk:     '✓ Correct!',
+    feedbackNo:     (l, t) => `✗ Wrong! Correct answer: ${l}: ${t}`,
+    nextBtn:        'Next →',
+    finishBtn:      'See Results →',
+    scoreSub:       'Total Score',
+    correctCount:   (c, t) => `<span>${c}</span> correct out of ${t} questions`,
+    timeTaken:      (t) => `⏱ Time: ${t}`,
+    dbSaving:       'Saving score...',
+    dbSaved:        '✓ Score saved to Firebase',
+    dbErr:          '⚠ Save failed (check Firebase rules or network)',
+    shareTitle:     'Share Your Score',
+    btnCopy:        '🔗 Copy Link',
+    btnCopied:      '✓ Copied!',
+    btnResultLb:    '🏆 Leaderboard',
+    btnRetry:       '↺ Play Again',
+    detailShow:     'View Answer Details',
+    detailHide:     'Hide Details',
+    detailAns:      (s, st, c, ct) => `Your answer: ${s} ${st} — Correct: ${c} ${ct}`,
+    lbTitle:        '🏆 Leaderboard',
+    btnBack:        '← Back',
+    lbLoading:      'Loading...',
+    lbEmpty:        'No results yet — be the first! 🎉',
+    lbAnon:         'Anonymous',
+    lbPts:          ' pts',
+    lbQCount:       (c, t) => `${c}/${t}`,
+    lbCols:         ['Rank','Player','Tier','Score','Time','Correct'],
+    lbErr:          '⚠ Load failed.<br><br>Go to Firebase Console → Firestore → Indexes and add a composite index:<br><code>quizTitle ASC + score DESC + timeTakenSec ASC</code>',
+    shareText:      (title, icon, name, score, time, url) =>
+                    `I got ${icon} ${name} in "${title}"!\nScore: ${score} pts | Time: ${time} — Can you beat me?\n${url}`,
+    igAlert:        '✅ Score copied to clipboard!\nOpen Instagram and paste into a new post 📸',
+    igFallback:     'Please manually copy this text to share on Instagram:\n\n',
+    copyFallback:   'Please manually copy this text:',
+    rankNames:      ['Iron', 'Bronze', 'Silver', 'Platinum', 'Diamond', 'Challenger'],
+    dateLocale:     'en-US',
+  }
+};
+
+/* ════════════════════════════════════════════════
+   段位（icon & color 共用，name 從字串表取）
+════════════════════════════════════════════════ */
+const RANK_BASE = [
+  { min:   0, max:  19, icon:'🌑', color:'#52525B' },   /* 0 題 (0分): 鐵牌 Iron */
+  { min:  20, max:  39, icon:'🥉', color:'#B45309' },   /* 1 題 (20分): 銅牌 Bronze */
+  { min:  40, max:  59, icon:'🥈', color:'#9CA3AF' },   /* 2 題 (40分): 銀牌 Silver */
+  { min:  60, max:  79, icon:'💎', color:'#0891B2' },   /* 3 題 (60分): 白金 Platinum */
+  { min:  80, max:  99, icon:'💠', color:'#7C3AED' },   /* 4 題 (80分): 鑽石 Diamond */
+  { min: 100, max: 100, icon:'🌟', color:'#F59E0B' },   /* 5 題 (100分): 菁英 Challenger */
+];
+
+/* ════════════════════════════════════════════════
+   雙語題目
+════════════════════════════════════════════════ */
+const QUESTIONS = {
+  zh: [
+    {
+      q: '在英雄聯盟中，擊殺哪一個地圖物件後可以獲得「巴龍 buff」，從而大幅強化小兵推進能力？',
+      opts: { A:'虛空幼蟲', B:'遠古巨龍', C:'巴龍納什 (Baron Nashor)', D:'預示者' },
+      correct: 'C'
+    },
+    {
+      q: '在英雄聯盟現行遊戲內容中，若隊伍在召喚峽谷中成功擊殺「遠古巨龍（Elder Dragon）」，全隊將獲得持續一段時間的強大 Buff。請問該 Buff 的核心效果為何？',
+      opts: { A:'當敵方英雄生命值低於特定比例（20%）時，會直接觸發巨龍聖化將其斬殺', B:'直接秒殺所有敵方防禦塔', C:'讓全隊小兵體積變大並免疫魔法傷害', D:'全隊英雄立刻復活且沒有冷卻時間' },
+      correct: 'A'
+    },
+    {
+      q: '下列哪位 LCP 的選手在對決與 T1 的比賽中拿下了五連殺？',
+      opts: { A:'Doggo', B:'Kiaya', C:'NL', D:'Evi' },
+      correct: 'A'
+    },
+    {
+      q: 'LCP（太平洋職業聯賽）作為亞太地區的頂級電競賽事，其最初成立時，是由包含 PCS、VCS（越南）、LCO(大洋洲賽區)以及哪一個賽區的大幅整合與升級而來？',
+      opts: { A:'LJL（日本賽區）', B:'LLA（拉丁美洲賽區）', C:'CBLOL(巴西賽區)', D:'LCK(韓國賽區)' },
+      correct: 'A'
+    },
+    {
+      q: '在 LCP 季後賽中，為了給予常規賽表現優異的隊伍更多容錯空間，通常會採用下列哪一種具備「復活甲」機制的賽制？',
+      opts: { A:'單敗淘汰制 (Single Elimination)', B:'冒泡賽制 (King of the Hill)', C:'循環積分制 (Round Robin Playoffs)', D:'雙敗淘汰制 (Double Elimination)' },
+      correct: 'D'
+    },
+  ],
+  en: [
+    {
+      q: 'In League of Legends, killing which map objective grants the "Baron Buff," which significantly enhances the pushing power of minions?',
+      opts: { A:'Voidgrubs', B:'Elder Dragon', C:'Baron Nashor', D:'Rift Herald' },
+      correct: 'C'
+    },
+    {
+      q: 'In the current version of League of Legends, if a team successfully kills the "Elder Dragon" in Summoner\'s Rift, the entire team receives a powerful temporary buff. What is the core effect of this buff?',
+      opts: { A:'When an enemy champion\'s health drops below 20%, it triggers an execute effect to kill them instantly.', B:'Instantly destroys all enemy turrets.', C:'Causes all friendly minions to grow larger and gain immunity to magic damage.', D:'Instantly revives all dead allied champions with no cooldown.' },
+      correct: 'A'
+    },
+    {
+      q: 'Which of the following LCP players secured a Pentakill in a match against T1?',
+      opts: { A:'Doggo', B:'Kiaya', C:'NL', D:'Evi' },
+      correct: 'A'
+    },
+    {
+      q: 'As the premier esports tournament in the Asia-Pacific region, the LCP (League of Legends Championship Pacific) was initially formed through a major consolidation and upgrade that included the PCS, VCS (Vietnam), LCO (Oceania),and which other region? ',
+      opts: { A:'LJL (Japan)', B:'LLA (Latin America)', C:'CBLOL (Brazil))', D:'LCK (Korea)' },
+      correct: 'A'
+    },
+    {
+      q: 'In the LCP Playoffs, which tournament format featuring a "safety net" losers\' bracket mechanism is typically used to give top regular-season teams more room for error?',
+      opts: { A:'Single Elimination', B:'King of the Hill', C:'Round Robin Playoffs', D:'Double Elimination' },
+      correct: 'D'
+    },
+  ]
+};
+
+const QUIZ_TITLE = { zh: 'LCP Ranked Fan Quiz: The Ultimate Lore Challenge', en: 'LCP Ranked Fan Quiz: The Ultimate Lore Challenge' };
+
+/* ════════════════════════════════════════════════
+   狀態 / State
+════════════════════════════════════════════════ */
+let lang       = 'zh';   // current language
+let playerName = '';
+let current    = 0;
+let score      = 0;
+let answers    = [];
+let answered   = false;
+let startTime  = 0;
+let elapsedSec = 0;
+let timerHandle= null;
+let prevScreen = 'screen-name';
+let detailOpen = false;
+
+/* ════════════════════════════════════════════════
+   Utils
+════════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+function getRankObj(s) {
+  const idx = RANK_BASE.findIndex(r => s >= r.min && s <= r.max);
+  const base = RANK_BASE[idx >= 0 ? idx : 0];
+  return { ...base, name: T().rankNames[idx >= 0 ? idx : 0] };
+}
+function T() { return STRINGS[lang]; }
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+function fmtTime(sec) { return `${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`; }
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function setDbStatus(state, text) {
+  $('db-status').className = 'db-status ' + state;
+  $('db-status-text').textContent = text;
+}
+
+/* ════════════════════════════════════════════════
+   語言切換 / Language toggle
+════════════════════════════════════════════════ */
+function applyLang() {
+  const t = T();
+  document.documentElement.lang = lang === 'zh' ? 'zh-TW' : 'en';
+  document.body.classList.toggle('lang-en', lang === 'en');
+
+  // lang button (shows what you can switch TO)
+  $('lang-flag').textContent  = t.langFlag;
+  $('lang-label').textContent = t.langLabel;
+
+  // screen 1
+  $('ui-logo').innerHTML       = t.logo;
+  $('ui-sub').textContent      = t.sub;
+  $('ui-db-badge').textContent = t.dbBadge;
+  $('ui-name-label').textContent    = t.nameLabel;
+  $('player-name').placeholder      = t.namePlaceholder;
+  $('btn-enter').textContent         = t.btnEnter;
+  $('btn-view-lb').textContent       = t.btnLb;
+
+  // screen 3 static labels
+  $('ui-score-sub').textContent  = t.scoreSub;
+  $('ui-share-title').textContent= t.shareTitle;
+  $('btn-copy').textContent      = t.btnCopy;
+  $('btn-result-lb').textContent = t.btnResultLb;
+  $('btn-retry').textContent     = t.btnRetry;
+  $('detail-toggle').textContent = detailOpen ? t.detailHide : t.detailShow;
+
+  // screen 4
+  $('ui-lb-title').textContent = t.lbTitle;
+  $('btn-back').textContent    = t.btnBack;
+}
+
+$('btn-lang').addEventListener('click', () => {
+  lang = lang === 'zh' ? 'en' : 'zh';
+  applyLang();
+});
+
+/* ════════════════════════════════════════════════
+   Timer
+════════════════════════════════════════════════ */
+function startTimer() {
+  startTime = Date.now(); clearInterval(timerHandle);
+  timerHandle = setInterval(() => {
+    const sec = Math.floor((Date.now() - startTime) / 1000);
+    const b = $('timer-badge');
+    b.textContent = fmtTime(sec);
+    b.className = 'timer-badge' + (sec >= 120 ? ' danger' : sec >= 90 ? ' warn' : '');
+  }, 500);
+}
+function stopTimer() { clearInterval(timerHandle); elapsedSec = Math.floor((Date.now()-startTime)/1000); }
+
+/* ════════════════════════════════════════════════
+   Quiz logic
+════════════════════════════════════════════════ */
+function startQuiz() {
+  current = 0; score = 0; answers = []; answered = false; detailOpen = false;
+  showScreen('screen-quiz');
+  $('quiz-title-display').textContent = QUIZ_TITLE[lang];
+  startTimer(); renderQuestion();
+}
+
+function renderQuestion() {
+  const t     = T();
+  const q     = QUESTIONS[lang][current];
+  const total = QUESTIONS[lang].length;
+  $('progress-fill').style.width = `${(current/total)*100}%`;
+  $('prog-label').textContent    = t.progLabel(current+1, total);
+  $('question-text').textContent = q.q;
+
+  const grid = $('options-grid');
+  grid.innerHTML = '';
+  Object.entries(q.opts).forEach(([letter, text]) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn'; btn.dataset.letter = letter;
+    btn.innerHTML = `<span class="opt-circle">${letter}</span>${escHtml(text)}`;
+    btn.onclick   = () => selectAnswer(letter);
+    grid.appendChild(btn);
+  });
+  $('feedback-bar').className = 'feedback-bar';
+  $('next-btn').className     = 'next-btn';
+  $('next-btn').textContent   = '';
+  answered = false;
+}
+
+function selectAnswer(letter) {
+  if (answered) return;
+  answered = true;
+  const t   = T();
+  const q   = QUESTIONS[lang][current];
+  const ok  = letter === q.correct;
+  if (ok) score += 20;
+
+  answers.push({ questionText:q.q, selected:letter, selectedText:q.opts[letter]||'', correct:q.correct, correctText:q.opts[q.correct]||'', isCorrect:ok });
+
+  document.querySelectorAll('.opt-btn').forEach(btn => {
+    btn.disabled = true;
+    if (btn.dataset.letter === q.correct)         btn.classList.add('correct');
+    if (btn.dataset.letter === letter && !ok)     btn.classList.add('wrong');
+  });
+
+  const fb = $('feedback-bar');
+  fb.textContent = ok ? t.feedbackOk : t.feedbackNo(q.correct, q.opts[q.correct]);
+  fb.className   = 'feedback-bar show ' + (ok ? 'ok' : 'no');
+
+  const nb = $('next-btn');
+  nb.textContent = current < QUESTIONS[lang].length-1 ? t.nextBtn : t.finishBtn;
+  nb.className   = 'next-btn show';
+}
+
+$('next-btn').addEventListener('click', () => {
+  current++;
+  if (current < QUESTIONS[lang].length) { renderQuestion(); }
+  else { stopTimer(); showResult(); }
+});
+
+/* ════════════════════════════════════════════════
+   Result + Firestore write
+════════════════════════════════════════════════ */
+async function showResult() {
+  showScreen('screen-result');
+  const t       = T();
+  const rank    = getRankObj(score);
+  const correct = answers.filter(a => a.isCorrect).length;
+
+  const badge = $('rank-badge');
+  badge.style.color = badge.style.borderColor = rank.color;
+  $('rank-icon').textContent = rank.icon;
+  $('rank-name').textContent = rank.name;
+  $('score-big').textContent = score;
+  $('score-big').style.color = rank.color;
+  $('correct-count').innerHTML  = t.correctCount(correct, answers.length);
+  $('time-taken').textContent   = t.timeTaken(fmtTime(elapsedSec));
+  $('ui-score-sub').textContent = t.scoreSub;
+  $('ui-share-title').textContent = t.shareTitle;
+  $('btn-copy').textContent       = t.btnCopy;
+  $('btn-result-lb').textContent  = t.btnResultLb;
+  $('btn-retry').textContent      = t.btnRetry;
+  $('detail-toggle').textContent  = t.detailShow;
+
+  $('rank-scale').innerHTML = RANK_BASE.map((r,i) =>
+    `<div class="rank-pip${score>=r.min?' active':''}" style="background:${r.color}" title="${T().rankNames[i]}"></div>`
+  ).join('');
+
+  // Firestore write
+  setDbStatus('saving', t.dbSaving);
+  try {
+    await db.collection(COLLECTION).add({
+      playerName, score,
+      rankName: rank.name, rankIcon: rank.icon,
+      correctCount: correct, totalQuestions: answers.length,
+      timeTakenSec: elapsedSec,
+      quizTitle: QUIZ_TITLE[lang], lang,
+      answerDetail: answers.map((a,i) => ({ no:i+1, question:a.questionText, selected:a.selected, yourAnswer:a.selectedText, correct:a.correct, answer:a.correctText, isCorrect:a.isCorrect })),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    setDbStatus('saved', t.dbSaved);
+  } catch(err) {
+    console.error('Firestore write failed:', err);
+    setDbStatus('err', t.dbErr);
+  }
+
+  // Share
+  const shareText = t.shareText(QUIZ_TITLE[lang], rank.icon, rank.name, score, fmtTime(elapsedSec), location.href);
+  const shareEnc  = encodeURIComponent(shareText);
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    return Promise.resolve();
+  }
+
+  $('btn-ig').onclick = () => {
+    copyText(shareText).then(() => {
+      window.open('https://www.instagram.com/', '_blank');
+      alert(T().igAlert);
+    }).catch(() => {
+      window.open('https://www.instagram.com/', '_blank');
+      alert(T().igFallback + shareText);
+    });
+  };
+  $('btn-th').onclick = () => window.open(`https://www.threads.net/intent/post?text=${shareEnc}`, '_blank');
+  $('btn-copy').onclick = () => {
+    copyText(shareText).then(() => {
+      $('btn-copy').textContent = T().btnCopied;
+      setTimeout(() => { $('btn-copy').textContent = T().btnCopy; }, 2000);
+    }).catch(() => { prompt(T().copyFallback, shareText); });
+  };
+
+  // Detail answers
+  $('detail-list').innerHTML = answers.map((a,i) => `
+    <div class="detail-item ${a.isCorrect?'ok':'no'}">
+      <span class="d-icon">${a.isCorrect?'✓':'✗'}</span>
+      <div class="d-q">
+        <div>Q${i+1}. ${escHtml(a.questionText)}</div>
+        ${!a.isCorrect ? `<div class="d-ans">${escHtml(T().detailAns(a.selected,a.selectedText,a.correct,a.correctText))}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+/* ════════════════════════════════════════════════
+   Leaderboard
+════════════════════════════════════════════════ */
+async function loadLeaderboard() {
+  const content = $('lb-content');
+  const t = T();
+  content.className = 'lb-loading';
+  content.textContent = t.lbLoading;
+  $('ui-lb-title').textContent = t.lbTitle;
+  $('btn-back').textContent    = t.btnBack;
+  try {
+    const snap = await db.collection(COLLECTION)
+      .where('quizTitle', '==', QUIZ_TITLE[lang])
+      .orderBy('score', 'desc').orderBy('timeTakenSec', 'asc').limit(20).get();
+
+    if (snap.empty) {
+      content.className = '';
+      content.innerHTML = `<div class="lb-empty">${t.lbEmpty}</div>`;
+      return;
+    }
+    const medals = ['🥇','🥈','🥉'];
+    const rows = snap.docs.map((doc,i) => {
+      const d    = doc.data();
+      const rank = getRankObj(d.score||0);
+      const date = d.createdAt
+        ? new Date(d.createdAt.toMillis()).toLocaleDateString(t.dateLocale,{month:'short',day:'numeric'})
+        : '—';
+      const lbl  = i < 3
+        ? `<span style="font-size:18px">${medals[i]}</span>`
+        : `<span class="lb-rank-num">#${i+1}</span>`;
+      return `<tr>
+        <td style="width:40px">${lbl}</td>
+        <td><div class="lb-name-main">${escHtml(d.playerName||t.lbAnon)}</div><div class="lb-name-date">${date}</div></td>
+        <td style="font-size:18px">${rank.icon}</td>
+        <td><span class="lb-score-val" style="color:${rank.color}">${d.score}</span><span class="lb-meta">${t.lbPts}</span></td>
+        <td class="lb-meta">${fmtTime(d.timeTakenSec||0)}</td>
+        <td class="lb-meta">${t.lbQCount(d.correctCount??'—', d.totalQuestions??10)}</td>
+      </tr>`;
+    }).join('');
+
+    content.className = '';
+    content.innerHTML = `
+      <table class="lb-table">
+        <thead><tr>${t.lbCols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch(err) {
+    console.error('Leaderboard load failed:', err);
+    content.className = '';
+    content.innerHTML = `<div class="lb-empty">${t.lbErr}</div>`;
+  }
+}
+
+/* ════════════════════════════════════════════════
+   Event bindings
+════════════════════════════════════════════════ */
+const nameInput = $('player-name');
+const btnEnter  = $('btn-enter');
+
+nameInput.addEventListener('input', () => { btnEnter.disabled = nameInput.value.trim().length === 0; });
+nameInput.addEventListener('keydown', e => { if (e.key==='Enter' && !btnEnter.disabled) btnEnter.click(); });
+btnEnter.addEventListener('click', () => { playerName = nameInput.value.trim(); startQuiz(); });
+
+$('btn-view-lb').addEventListener('click', () => { prevScreen='screen-name'; showScreen('screen-leaderboard'); loadLeaderboard(); });
+$('btn-result-lb').addEventListener('click', () => { prevScreen='screen-result'; showScreen('screen-leaderboard'); loadLeaderboard(); });
+$('btn-back').addEventListener('click', () => showScreen(prevScreen));
+
+$('detail-toggle').addEventListener('click', () => {
+  const dl = $('detail-list');
+  dl.classList.toggle('show');
+  detailOpen = dl.classList.contains('show');
+  $('detail-toggle').textContent = detailOpen ? T().detailHide : T().detailShow;
+});
+
+$('btn-retry').addEventListener('click', () => showScreen('screen-name'));
+
+// Init UI text
+applyLang();
+</script>
+</body>
+</html>
